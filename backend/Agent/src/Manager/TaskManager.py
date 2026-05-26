@@ -7,6 +7,7 @@ import httpx
 from pydantic import BaseModel, PrivateAttr
 
 from backend.Agent.src.Manager.Task import ParentTask
+from backend.Agent.src.common.status import Status
 from backend.Agent.src.common.web_data import (
     ResearchTaskRequest,
     ChildTaskRequest,
@@ -33,8 +34,8 @@ class TaskManager(BaseModel):
 
         task = ParentTask(
             task_id=parent_task_id,
-            status="RUNNING",
-            current_stage="PLANNER",
+            status=Status.RUNNING,
+            current_stage=Status.PLANNER,
             topic=req.topic,
             language=req.language,
             depth=req.depth,
@@ -49,7 +50,7 @@ class TaskManager(BaseModel):
         try:
             await self._create_planner_child(task, req)
         except Exception as exc:
-            task.status = "FAILED"
+            task.status = Status.FAILED
             task.error = f"failed to create planner task: {exc}"
             self._tasks[parent_task_id] = task
         return task
@@ -121,25 +122,25 @@ class TaskManager(BaseModel):
     async def handle_planner_callback(self, callback: ChildTaskCallback) -> ParentTask:
         return await self._handle_callback(
             callback=callback,
-            expected_stage="PLANNER",
+            expected_stage=Status.PLANNER,
             result_key="plan_json",
-            next_stage="RESEARCH",
+            next_stage=Status.RESEARCH,
         )
 
     async def handle_research_callback(self, callback: ChildTaskCallback) -> ParentTask:
         return await self._handle_callback(
             callback=callback,
-            expected_stage="RESEARCH",
+            expected_stage=Status.RESEARCH,
             result_key="research_json",
-            next_stage="REPORTER",
+            next_stage=Status.REPORTER,
         )
 
     async def handle_reporter_callback(self, callback: ChildTaskCallback) -> ParentTask:
         return await self._handle_callback(
             callback=callback,
-            expected_stage="REPORTER",
+            expected_stage=Status.REPORTER,
             result_key="report_text",
-            next_stage="DONE",
+            next_stage=Status.DONE,
         )
 
     async def _handle_callback(
@@ -159,16 +160,16 @@ class TaskManager(BaseModel):
             return task
 
         expected_child_task_id = {
-            "PLANNER": task.planner_task_id,
-            "RESEARCH": task.research_task_id,
-            "REPORTER": task.reporter_task_id,
+            Status.PLANNER: task.planner_task_id,
+            Status.RESEARCH: task.research_task_id,
+            Status.REPORTER: task.reporter_task_id,
         }[expected_stage]
 
         if callback.child_task_id != expected_child_task_id:
             return task
 
-        if callback.status == "FAILED":
-            task.status = "FAILED"
+        if callback.status == Status.FAILED:
+            task.status = Status.FAILED
             task.error = (
                 f"{expected_stage} child task {callback.child_task_id} failed: "
                 f"{callback.error or f'{expected_stage} failed'}"
@@ -190,7 +191,7 @@ class TaskManager(BaseModel):
                 # 构建下一个阶段的子任务
                 await self._create_research_child(task)
             except Exception as exc:
-                task.status = "FAILED"
+                task.status = Status.FAILED
                 task.error = f"failed to create research task: {exc}"
                 self._tasks[task.task_id] = task
             return task
@@ -204,13 +205,13 @@ class TaskManager(BaseModel):
                 # 构建下一个阶段的子任务
                 await self._create_report_child(task)
             except Exception as exc:
-                task.status = "FAILED"
+                task.status = Status.FAILED
                 task.error = f"failed to create reporter task: {exc}"
                 self._tasks[task.task_id] = task
             return task
 
         task.report_text = callback.result.get("report_text", "")
         task.current_stage = next_stage
-        task.status = "SUCCESS"
+        task.status = Status.SUCCESS
         self._tasks[task.task_id] = task
         return task

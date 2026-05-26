@@ -7,6 +7,7 @@ from typing import Any, Literal, Optional
 import httpx
 from pydantic import BaseModel, PrivateAttr
 
+from backend.Agent.src.common.status import Status
 from backend.Agent.src.common.web_data import (
     ChildTaskCallback,
     ChildTaskRequest,
@@ -19,7 +20,7 @@ class ResearchChildTask(BaseModel):
     task_id: str
     parent_task_id: str
     status: Literal["PENDING", "RUNNING", "DONE", "FAILED"]
-    stage: Literal["RESEARCH"] = "RESEARCH"
+    stage: Literal["RESEARCH"] = Status.RESEARCH
     callback_url: str
     input_data: dict[str, Any]
     result: Optional[dict[str, Any]] = None
@@ -36,7 +37,7 @@ class ResearchTaskManager(BaseModel):
         task = ResearchChildTask(
             task_id=request.child_task_id,
             parent_task_id=request.parent_task_id,
-            status="PENDING",
+            status=Status.PENDING,
             callback_url=request.callback_url,
             input_data=request.input_data,
         )
@@ -56,7 +57,7 @@ class ResearchTaskManager(BaseModel):
 
     async def _execute_task(self, task_id: str) -> None:
         task = self._tasks[task_id]
-        task.status = "RUNNING"
+        task.status = Status.RUNNING
         self._tasks[task_id] = task
 
         try:
@@ -68,11 +69,11 @@ class ResearchTaskManager(BaseModel):
             )
             research_json = await self._service.generate_research(request)
 
-            task.status = "DONE"
+            task.status = Status.DONE
             task.result = {"research_json": research_json}
             self._tasks[task_id] = task
         except Exception as exc:
-            task.status = "FAILED"
+            task.status = Status.FAILED
             task.error = (
                 f"research child task {task_id} failed with {type(exc).__name__}: {exc}\n"
                 f"{traceback.format_exc()}"
@@ -86,7 +87,7 @@ class ResearchTaskManager(BaseModel):
             parent_task_id=task.parent_task_id,
             child_task_id=task.task_id,
             stage=task.stage,
-            status=task.status if task.status == "FAILED" else "DONE",
+            status=task.status if task.status == Status.FAILED else Status.DONE,
             result=task.result,
             error=task.error,
         )

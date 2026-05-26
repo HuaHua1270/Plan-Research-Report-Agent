@@ -27,9 +27,4 @@ class ParentTask(BaseModel):
     error: Optional[str] = None
 
 
-class ChildTaskRequest(BaseModel):
-    parent_task_id: str
-    child_task_id: str
-    callback_url: str
-    input_data: dict[str, Any]
 

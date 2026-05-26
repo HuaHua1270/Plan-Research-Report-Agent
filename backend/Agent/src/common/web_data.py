@@ -37,12 +37,4 @@ class ChildTaskResponse(BaseModel):
     stage: Literal["PLANNER", "RESEARCH", "REPORTER"]
 
 
-class AgentRequest(BaseModel):
-    req_id: str
-    content: str
-
-
-class AgentResponse(BaseModel):
-    res_id: str
-    content: str
 

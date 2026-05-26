@@ -41,6 +41,7 @@ class SummarizerAgentService:
         subtopics = self._extract_subtopics(plan_json)
         task_summaries = []
 
+        # 拿出子任务 并执行
         for index, subtopic in enumerate(subtopics, start=1):
             prompt = self._build_subtopic_prompt(input_data, subtopic, index, len(subtopics))
             summarize_agent.clear_history()
