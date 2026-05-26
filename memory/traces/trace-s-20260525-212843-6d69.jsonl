@@ -1,0 +1,2 @@
+{"ts": "2026-05-25T21:28:43.958116", "session_id": "s-20260525-212843-6d69", "step": null, "event": "session_start", "payload": {"agent_name": "PlannerAgent", "agent_type": "PlanAgent"}}
+{"ts": "2026-05-25T21:28:43.958395", "session_id": "s-20260525-212843-6d69", "step": null, "event": "message_written", "payload": {"role": "user", "content": "当前日期：2026-05-25\n研究主题：大语言模型在软件开发中的应用\n报告语言：zh\n研究深度：quick\n最多子主题数：3\n是否需要引用：False\n请根据系统要求生成研究计划。"}}
