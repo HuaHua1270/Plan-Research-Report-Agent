@@ -6,7 +6,7 @@ from MyAgentFrame.core.config import Config
 from MyAgentFrame.tool.registry import ToolRegistry
 from backend.Agent.src.agent.SummarizerAgent import SummarizerAgent
 from backend.Agent.src.agent.enhancement import tool_listener
-from backend.Agent.src.common.web_data import ChildTaskRequest
+from backend.Agent.src.common.DTO.Request import ChildTaskRequest
 from backend.Agent.src.models import summarize_llm
 from backend.Agent.src.prompts import task_summarizer_instructions
 from backend.Agent.src.tools.SearchTool import SearchTool
@@ -38,6 +38,22 @@ class SummarizerAgentService:
     async def generate_research(self, request: ChildTaskRequest) -> dict[str, Any]:
         input_data = request.input_data
         plan_json = input_data.get("plan_json") or {}
+        if isinstance(input_data.get("subtopic"), dict):
+            subtopic = input_data["subtopic"]
+            index = int(input_data.get("subtopic_index") or 1)
+            total = int(input_data.get("subtopic_total") or 1)
+            prompt = self._build_subtopic_prompt(input_data, subtopic, index, total)
+            summarize_agent.clear_history()
+            summary = await asyncio.to_thread(summarize_agent.run, prompt)
+            return {
+                "index": index,
+                "title": subtopic.get("title", f"Subtopic {index}"),
+                "intent": subtopic.get("intent", ""),
+                "query": subtopic.get("query", ""),
+                "summary": summary,
+                "plan_json": plan_json,
+            }
+
         subtopics = self._extract_subtopics(plan_json)
         task_summaries = []
 

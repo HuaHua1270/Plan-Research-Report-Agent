@@ -25,9 +25,6 @@ class ServiceEndpoint:
 
 HEALTH_ENDPOINTS = [
     ServiceEndpoint("task-manager", 8000),
-    ServiceEndpoint("planner", 8001),
-    ServiceEndpoint("research", 8002),
-    ServiceEndpoint("reporter", 8003),
 ]
 
 
@@ -131,8 +128,8 @@ def print_task_lost_hint(task_id: str, task_url: str, create_response: Any) -> N
     print(f"  task_id={task_id}")
     print(f"  url={task_url}")
     print(f"  create_response={json.dumps(create_response, ensure_ascii=False)}")
-    print("  hint=Task state is stored in memory. Check whether task-manager restarted,")
-    print("       for example because start_services.py runs uvicorn with --reload.")
+    print("  hint=Task state is stored in PostgreSQL. Check DATABASE_URL, migrations,")
+    print("       and whether task-manager is reading the same database used at creation time.")
 
 
 def run_end_to_end(args: argparse.Namespace) -> bool:

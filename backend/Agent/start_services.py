@@ -4,74 +4,61 @@ import argparse
 import signal
 import subprocess
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 
 
-@dataclass(frozen=True)
-class ServiceSpec:
-    name: str
-    app: str
-    port: int
+API_TARGET = "backend.Agent.src.main:app"
+API_HOST = "127.0.0.1"
+API_PORT = 8000
 
 
-SERVICES = [
-    ServiceSpec("task-manager", "backend.Agent.src.main:app", 8000),
-    ServiceSpec("planner", "backend.Agent.src.controller.planner.planner_Controller:app", 8001),
-    ServiceSpec("research", "backend.Agent.src.controller.summarizer.summarizer_Controller:app", 8002),
-    ServiceSpec("reporter", "backend.Agent.src.controller.reporter.reporter_Controller:app", 8003),
-]
+def build_command(reload: bool = False) -> list[str]:
+    """构造唯一启动命令。
 
+    当前项目已经改成单 main.py 模式：FastAPI API、Planner consumer、
+    Researcher consumer、Reporter consumer 都在 backend.Agent.src.main:app
+    的 lifespan 中启动，因此这里不再额外拉起 worker 子进程。
+    """
 
-def build_command(service: ServiceSpec, reload: bool = False) -> list[str]:
     cmd = [
         sys.executable,
         "-m",
         "uvicorn",
-        service.app,
+        API_TARGET,
         "--host",
-        "127.0.0.1",
+        API_HOST,
         "--port",
-        str(service.port),
+        str(API_PORT),
     ]
     if reload:
         cmd.append("--reload")
     return cmd
 
 
-def start_service(service: ServiceSpec, reload: bool = False) -> subprocess.Popen:
-    cmd = build_command(service, reload=reload)
-    print(f"starting {service.name}: http://127.0.0.1:{service.port}")
-    print(f"  reload={'enabled' if reload else 'disabled'}")
-    return subprocess.Popen(cmd, cwd=Path(__file__).resolve().parents[2])
-
-
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Start Agent backend services.")
+    parser = argparse.ArgumentParser(description="Start Agent backend with one main.py process.")
     parser.add_argument(
         "--reload",
         action="store_true",
-        help="Enable uvicorn reload. This can reset in-memory task state when files change.",
-    )
-    parser.add_argument(
-        "--only",
-        choices=[service.name for service in SERVICES],
-        help="Start only one service.",
+        help="Enable uvicorn reload for development.",
     )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    services = [service for service in SERVICES if args.only is None or service.name == args.only]
-    processes: list[subprocess.Popen] = []
+    process: subprocess.Popen | None = None
 
     def shutdown(*_: object) -> None:
-        print("\nstopping services...")
-        for process in processes:
-            if process.poll() is None:
-                process.terminate()
-        for process in processes:
+        """转发退出信号给 uvicorn。
+
+        真正的资源释放由 main.py 的 FastAPI lifespan 完成：它会先停止三个
+        consumer，再关闭 Redis 和 SQLite。
+        """
+
+        if process is not None and process.poll() is None:
+            print("\nstopping agent main service...")
+            process.terminate()
             try:
                 process.wait(timeout=10)
             except subprocess.TimeoutExpired:
@@ -81,12 +68,14 @@ def main() -> None:
     signal.signal(signal.SIGINT, shutdown)
     signal.signal(signal.SIGTERM, shutdown)
 
-    for service in services:
-        processes.append(start_service(service, reload=args.reload))
+    cmd = build_command(reload=args.reload)
+    print(f"starting agent main service: http://{API_HOST}:{API_PORT}")
+    print(f"  target={API_TARGET}")
+    print(f"  reload={'enabled' if args.reload else 'disabled'}")
 
-    print("\nservices started. press Ctrl+C to stop.")
-    for process in processes:
-        process.wait()
+    # cwd 放到项目根目录，保证 backend.Agent.src... 绝对导入可以稳定解析。
+    process = subprocess.Popen(cmd, cwd=Path(__file__).resolve().parents[2])
+    process.wait()
 
 
 if __name__ == "__main__":

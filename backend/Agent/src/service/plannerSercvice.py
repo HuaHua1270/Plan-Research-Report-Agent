@@ -6,7 +6,7 @@ from typing import Any
 
 from backend.Agent.src.agent.PlannerAgent import PlanAgent
 from backend.Agent.src.agent.enhancement import tool_listener
-from backend.Agent.src.common.web_data import ChildTaskRequest
+from backend.Agent.src.common.DTO.Request import ChildTaskRequest
 from backend.Agent.src.models import plan_llm
 from backend.Agent.src.prompts import todo_planner_instructions
 
@@ -60,4 +60,3 @@ class PlannerAgentService:
             raise ValueError("planner result must contain non-empty subtopics")
 
         return data
-

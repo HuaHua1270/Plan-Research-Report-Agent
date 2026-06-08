@@ -3,7 +3,7 @@ import json
 
 from backend.Agent.src.agent.ReporterAgent import ReportAgent
 from backend.Agent.src.agent.enhancement import tool_listener
-from backend.Agent.src.common.web_data import ChildTaskRequest
+from backend.Agent.src.common.DTO.Request import ChildTaskRequest
 from backend.Agent.src.models import report_llm
 from backend.Agent.src.prompts import report_writer_instructions
 
